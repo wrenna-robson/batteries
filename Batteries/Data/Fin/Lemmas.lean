@@ -46,62 +46,6 @@ theorem foldr_assoc {op : α → α → α} [ha : Std.Associative op] {f : Fin n
 
 @[simp] theorem coe_clamp (n m : Nat) : (clamp n m : Nat) = min n m := rfl
 
-/-
-TODO(wip): remove this planning comment before opening the PR.
-
-Lemma kinds:
-  A. value lemmas        `simp, grind =`  let `grind` see through each definition
-  B. normal-form rewrites `simp`          general → specific, unconditional;
-                                          never introduce a proof argument
-  C. tools                (none)          `_apply`, conditional, case splits
-  D. structure            case by case    pivot shifts, order, composition
-
-Done (A, B, C complete; D pivot shifts complete):
-  order (top):  ne_zero_of_lt, ne_last_of_lt
-  castSucc:     castSucc_ne_last, le_castSucc_iff_lt_succ,
-                succ_le_or_le_castSucc, castSucc_lt_or_lt_succ
-  castPred:     val, castPred_castSucc, castSucc_castPred
-  punchOut:     val, _zero, _last, _apply ×2, _of_lt, _of_gt,
-                pivot shifts ×4 (not simp: gluing fires first)
-  punchIn:      val, _zero, _last, _apply ×2, punchIn_ne, ne_iff_exists_punchIn_eq,
-                _of_lt, _of_le (Nat hypotheses), pivot shifts ×4
-  pinch:        val, pred_eq_pinch_zero, castPred_eq_pinch_last,
-                _of_le, _of_lt (Nat hypotheses), pivot shifts ×4
-  injectivity:  punchIn_eq_punchIn_iff, punchOut_eq_punchOut_iff (simp), pinch_eq_pinch_iff
-  interactions: inverses (punchOut_punchIn_right, punchIn_punchOut),
-                gluing (punchOut_castSucc, punchOut_succ, punchOut_punchIn_left)
-
-Remaining — three groups:
-
-1. Order (in each function's section)
-  ✅ punchIn:   punchIn_lt_punchIn_iff, punchIn_le_punchIn_iff (simp);
-                punchIn_lt_iff, punchIn_le_iff, lt_punchIn_iff, le_punchIn_iff (Nat RHS)
-  ✅ punchOut:  punchOut_lt_punchOut_iff, punchOut_le_punchOut_iff (simp)
-  ⬜ pinch:     pinch_le_pinch, lt_of_pinch_lt_pinch               (stated, unproved)
-
-2. Composition (the simplex lemmas) — start with the easy end; all drafted in Scratch.lean
-  ⬜ collapse (pinch section):  pinch p (castSucc p) = p,  pinch p (succ p) = p
-  ⬜ sections of pinch:         pinch p (punchIn (castSucc p) j) = j,
-                                pinch p (punchIn (succ p) j) = j
-  ⬜ two punchIns:   i ≤ j → punchIn (succ j) (punchIn i k)
-                                = punchIn (castSucc i) (punchIn j k)
-  ⬜ two pinches:    i ≤ j → pinch j (pinch (castSucc i) k) = pinch i (pinch (succ j) k)
-  ⬜ pinch after punchIn, gap away from the merged pair:
-       i ≤ castSucc j → pinch (succ j) (punchIn (castSucc i) k) = punchIn i (pinch j k)
-       castSucc j < i → pinch (castSucc j) (punchIn (succ i) k) = punchIn i (pinch j k)
-  ⬜ item 8 mixed-pivot forms:
-       punchIn (punchIn j i) (pinch i j) = j
-       punchIn (punchIn j i) (punchIn (pinch i j) k) = punchIn j (punchIn i k)
-
-3. Function-level properties (Injective/Surjective/LeftInverse are in core
-   `Init.Data.Function`; StrictMono/Monotone are Mathlib-only, so order stays as iffs)
-  ⬜ punchIn_injective:    Function.Injective (punchIn p)
-  ⬜ pinch_surjective:     Function.Surjective (pinch p)
-  ⬜ sections as LeftInverse: LeftInverse (pinch p) (punchIn (castSucc p)), and (succ p)
-  ✗ punchOut: injective only on {i // i ≠ p}; subtype LeftInverse/RightInverse with
-    punchIn considered and skipped (needs lambdas or new defs). Use punchOut_eq_punchOut_iff.
--/
-
 /-! ### castSucc -/
 
 theorem castSucc_ne_last (i : Fin n) : castSucc i ≠ last n := Fin.ne_of_lt (castSucc_lt_last _)
@@ -130,6 +74,8 @@ theorem castSucc_lt_or_lt_succ (i : Fin (n + 1)) (j : Fin n) : j.castSucc < i �
 
 /-! ### punchOut -/
 
+/-! #### Value and endpoints -/
+
 @[simp, grind =] theorem val_punchOut (p i : Fin (n + 1)) (h : i ≠ p) :
     (punchOut p i h : Nat) = if p.val < i.val then i.val - 1 else i.val := by grind [punchOut]
 
@@ -146,12 +92,18 @@ theorem punchOut_zero_apply (i : Fin (n + 1)) (h : i ≠ 0) :
 theorem punchOut_last_apply (i : Fin (n + 1)) (h : i ≠ last n) :
     punchOut (last n) i h = castPred i h := by simp
 
+/-! #### Case splits -/
+
 theorem punchOut_of_lt {p i : Fin (n + 1)} (hip : i < p) :
     punchOut p i (Fin.ne_of_lt hip) = castPred i (ne_last_of_lt hip) :=
   Fin.ext (ite_eq_right (Nat.lt_asymm hip))
 
 theorem punchOut_of_gt {p i : Fin (n + 1)} (hpi : p < i) :
     punchOut p i (Fin.ne_of_gt hpi) = pred i (ne_zero_of_lt hpi) := Fin.ext (ite_eq_left hpi)
+
+/-! #### Pivot shifts
+
+Not `simp`: the gluing lemmas `punchOut_castSucc` and `punchOut_succ` fire first. -/
 
 theorem punchOut_succ_succ (p i : Fin (n + 1)) (h : i ≠ p) :
     punchOut (succ p) (succ i) (mt succ_inj.mp h) = succ (punchOut p i h) := by grind
@@ -167,6 +119,8 @@ theorem punchOut_castSucc_last (p : Fin (n + 1)) :
     punchOut (castSucc p) (last (n + 1)) (castSucc_ne_last p).symm = last n :=
   Fin.ext (ite_eq_left p.isLt)
 
+/-! #### Injectivity and order -/
+
 @[simp] theorem punchOut_eq_punchOut_iff {p i j : Fin (n + 1)} {hi : i ≠ p} {hj : j ≠ p} :
     punchOut p i hi = punchOut p j hj ↔ i = j := by grind
 
@@ -177,6 +131,8 @@ theorem punchOut_castSucc_last (p : Fin (n + 1)) :
     punchOut p i hi ≤ punchOut p j hj ↔ i ≤ j := by grind
 
 /-! ### punchIn -/
+
+/-! #### Value and endpoints -/
 
 @[simp, grind =] theorem val_punchIn (p : Fin (n + 1)) (i : Fin n) :
     (punchIn p i : Nat) = if p.val ≤ i.val then i.val + 1 else i.val := by grind [punchIn]
@@ -190,16 +146,22 @@ theorem punchIn_zero_apply (i : Fin n) : punchIn 0 i = succ i := by simp
 
 theorem punchIn_last_apply (i : Fin n) : punchIn (last n) i = castSucc i := by simp
 
+/-! #### Missing the pivot -/
+
 theorem punchIn_ne (p : Fin (n + 1)) (i : Fin n) : punchIn p i ≠ p := by grind
 
 theorem ne_iff_exists_punchIn_eq {p i : Fin (n + 1)} : i ≠ p ↔ ∃ j, punchIn p j = i :=
   ⟨fun h => ⟨punchOut p i h, by grind⟩, by grind⟩
+
+/-! #### Case splits -/
 
 theorem punchIn_of_lt {p : Fin (n + 1)} {i : Fin n} (h : i.val < p.val) :
     punchIn p i = castSucc i := Fin.ext (ite_eq_right (Nat.not_le.mpr h))
 
 theorem punchIn_of_le {p : Fin (n + 1)} {i : Fin n} (h : p.val ≤ i.val) :
     punchIn p i = succ i := Fin.ext (ite_eq_left h)
+
+/-! #### Pivot shifts -/
 
 @[simp] theorem punchIn_succ_succ (p : Fin (n + 1)) (i : Fin n) :
     punchIn (succ p) (succ i) = succ (punchIn p i) := by grind
@@ -212,6 +174,8 @@ theorem punchIn_of_le {p : Fin (n + 1)} {i : Fin n} (h : p.val ≤ i.val) :
 @[simp] theorem punchIn_castSucc_last (p : Fin (n + 1)) :
     punchIn (castSucc p) (last n) = last (n + 1) := Fin.ext (ite_eq_left (Nat.le_of_lt_succ p.isLt))
 
+/-! #### Injectivity and order -/
+
 @[simp] theorem punchIn_eq_punchIn_iff {p : Fin (n + 1)} {i j : Fin n} :
     punchIn p i = punchIn p j ↔ i = j := by grind
 
@@ -220,6 +184,8 @@ theorem punchIn_of_le {p : Fin (n + 1)} {i : Fin n} (h : p.val ≤ i.val) :
 
 @[simp] theorem punchIn_le_punchIn_iff {p : Fin (n + 1)} {i j : Fin n} :
     punchIn p i ≤ punchIn p j ↔ i ≤ j := by grind
+
+/-! #### Comparison with the pivot -/
 
 theorem punchIn_lt_iff {p : Fin (n + 1)} {i : Fin n} :
     punchIn p i < p ↔ i.val < p.val := by grind
@@ -235,8 +201,12 @@ theorem le_punchIn_iff {p : Fin (n + 1)} {i : Fin n} :
 
 /-! ### pinch -/
 
+/-! #### Value -/
+
 @[simp, grind =] theorem val_pinch (p : Fin n) (i : Fin (n + 1)) :
     (pinch p i : Nat) = if p.val < i.val then i.val - 1 else i.val := by grind [pinch]
+
+/-! #### Case splits and endpoints -/
 
 theorem pinch_of_le {p : Fin n} {i : Fin (n + 1)} (h : i.val ≤ p.val) :
     pinch p i = castPred i (ne_last_of_lt (b := succ p) (Nat.lt_succ_of_le h)) :=
@@ -252,6 +222,8 @@ theorem castPred_eq_pinch_last (i : Fin (n + 2)) (h : i ≠ last (n + 1)) :
     castPred i h = pinch (last n) i :=
   Fin.ext (ite_eq_right (Nat.not_lt.mpr (Nat.le_of_lt_succ (val_lt_last h)))).symm
 
+/-! #### Pivot shifts -/
+
 @[simp] theorem pinch_succ_succ (p : Fin n) (i : Fin (n + 1)) :
     pinch (succ p) (succ i) = succ (pinch p i) := by grind
 
@@ -263,13 +235,14 @@ theorem castPred_eq_pinch_last (i : Fin (n + 2)) (h : i ≠ last (n + 1)) :
 @[simp] theorem pinch_castSucc_last (p : Fin n) :
     pinch (castSucc p) (last (n + 1)) = last n := Fin.ext (ite_eq_left (Nat.lt_succ_of_lt p.isLt))
 
+/-! #### Collapse -/
+
 @[simp] theorem pinch_castSucc_self (p : Fin n) : pinch p p.castSucc = p :=
   Fin.ext (ite_eq_right (Nat.lt_irrefl _))
 @[simp] theorem pinch_succ_self (p : Fin n) : pinch p p.succ = p :=
   Fin.ext (ite_eq_left (Nat.lt_succ_self _))
 
-theorem pinch_pinch_castSucc {i j : Fin n} (hij : i ≤ j) (k : Fin (n + 2)) :
-    pinch j (pinch (castSucc i) k) = pinch i (pinch (succ j) k) := by grind
+/-! #### Surjectivity, fibres and order -/
 
 theorem exists_pinch_eq (p : Fin n) (j : Fin n) : ∃ i, pinch p i = j :=
   ⟨(punchIn (castSucc p) j), by grind⟩
@@ -294,6 +267,8 @@ theorem lt_of_pinch_lt_pinch {p : Fin n} {i j : Fin (n + 1)} :
 
 /-! ### punchIn / punchOut / pinch interactions -/
 
+/-! #### Gluing: `punchOut` at a neighbour of the gap is `pinch` -/
+
 @[simp] theorem punchOut_punchIn_left (p : Fin n) (i : Fin (n + 1)) :
     punchOut (punchIn i p) i (punchIn_ne i p).symm = pinch p i := by grind
 
@@ -303,6 +278,8 @@ theorem lt_of_pinch_lt_pinch {p : Fin n} {i j : Fin (n + 1)} :
 @[simp] theorem punchOut_succ (p : Fin n) (i : Fin (n + 1)) (h : i ≠ succ p) :
     punchOut (succ p) i h = pinch p i := by grind
 
+/-! #### Sections of `pinch` -/
+
 @[simp] theorem pinch_punchIn_castSucc (p j : Fin n) :
     pinch p (punchIn (castSucc p) j) = j :=
   (punchOut_castSucc p _ (punchIn_ne _ j)).symm.trans (punchOut_punchIn_right _ j)
@@ -311,14 +288,21 @@ theorem lt_of_pinch_lt_pinch {p : Fin n} {i j : Fin (n + 1)} :
     pinch p (punchIn (succ p) j) = j :=
   (punchOut_succ p _ (punchIn_ne _ j)).symm.trans (punchOut_punchIn_right _ j)
 
+/-! #### Simplicial identities -/
+
 theorem punchIn_succ_punchIn {i j : Fin (n + 1)} (hij : i ≤ j) (k : Fin n) :
     punchIn (succ j) (punchIn i k) = punchIn (castSucc i) (punchIn j k) := by grind
+
+theorem pinch_pinch_castSucc {i j : Fin n} (hij : i ≤ j) (k : Fin (n + 2)) :
+    pinch j (pinch (castSucc i) k) = pinch i (pinch (succ j) k) := by grind
 
 theorem pinch_succ_punchIn_castSucc {i : Fin (n + 1)} {j : Fin n} (hij : i.val ≤ j.val) (k) :
     pinch (succ j) (punchIn (castSucc i) k) = punchIn i (pinch j k) := by grind
 
 theorem pinch_castSucc_punchIn_succ {i : Fin (n + 1)} {j : Fin n} (hji : j.val < i.val) (k) :
     pinch (castSucc j) (punchIn (succ i) k) = punchIn i (pinch j k) := by grind
+
+/-! #### Mixed-pivot forms -/
 
 @[simp] theorem punchIn_punchIn_pinch (j : Fin (n + 1)) (i : Fin n) :
     punchIn (punchIn j i) (pinch i j) = j :=
