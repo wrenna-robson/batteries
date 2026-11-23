@@ -14,6 +14,25 @@ namespace Fin
 /-- `min n m` as an element of `Fin (m + 1)` -/
 @[expose] def clamp (n m : Nat) : Fin (m + 1) := ⟨min n m, Nat.lt_succ_of_le (Nat.min_le_right ..)⟩
 
+/-- `castPred i` sends `i : Fin (n + 1)` to `Fin n` as long as i ≠ last n. -/
+@[expose, inline, implicit_reducible]
+def castPred (i : Fin (n + 1)) (h : i ≠ last n) : Fin n := ⟨i, by grind⟩
+
+/-- Given a pivot `p : Fin (n + 1)`, inject `i : Fin (n + 1)` with `i ≠ p` into `Fin n`.
+Generalizes `Fin.pred` and `Fin.castPred`. -/
+@[expose, inline, implicit_reducible] def punchOut (p i : Fin (n + 1)) (hip : i ≠ p) : Fin n :=
+  ⟨if p.val < i.val then i.val - 1 else i.val, by grind⟩
+
+/--Given a pivot `p : Fin (n + 1)`, inject `i : Fin n` into `Fin (n + 1)` by
+avoiding `p`. Generalizes `Fin.castSucc` and `Fin.succ`. -/
+@[expose, inline, implicit_reducible] def punchIn (p : Fin (n + 1)) (i : Fin n) : Fin (n + 1) :=
+  ⟨if p.val ≤ i.val then i.val + 1 else i.val, by grind⟩
+
+/-- Given a pivot `p : Fin n`, projects `i : Fin (n + 1)` into `Fin n` by a near-injection
+which "pinches" only at `p`. -/
+@[expose, inline, implicit_reducible] def pinch (p : Fin n) (i : Fin (n + 1)) : Fin n :=
+  ⟨if p.val < i.val then i.val - 1 else i.val, by grind⟩
+
 /-- Heterogeneous monadic fold over `Fin n` from right to left:
 ```
 Fin.foldrM n f xₙ = do
