@@ -302,13 +302,20 @@ theorem pinch_succ_punchIn_castSucc {i : Fin (n + 1)} {j : Fin n} (hij : i.val â
 theorem pinch_castSucc_punchIn_succ {i : Fin (n + 1)} {j : Fin n} (hji : j.val < i.val) (k) :
     pinch (castSucc j) (punchIn (succ i) k) = punchIn i (pinch j k) := by grind
 
-/-! #### Mixed-pivot forms -/
+/-! #### Pairs of distinct positions -/
 
+/-- `pinch i j` is the position of `j` once `punchIn j i` is removed, so punching that gap
+back in recovers `j`. -/
 @[simp] theorem punchIn_punchIn_pinch (j : Fin (n + 1)) (i : Fin n) :
-    punchIn (punchIn j i) (pinch i j) = j :=
-  (congrArg (punchIn (punchIn j i)) (punchOut_punchIn_left i j)).symm.trans
-    (punchIn_punchOut _ _ _)
+    punchIn (punchIn j i) (pinch i j) = j := by grind
 
+/-- Describing the two distinct positions `j` and `punchIn j i` from the other one, as
+`punchIn j i` and `pinch i j`, and then back again recovers `i`. -/
+@[simp] theorem pinch_pinch_punchIn (j : Fin (n + 1)) (i : Fin n) :
+    pinch (pinch i j) (punchIn j i) = i := by grind
+
+/-- Removing the two distinct positions `j` and `punchIn j i` leaves the same positions
+whichever of them is removed first. -/
 @[simp] theorem punchIn_punchIn_punchIn_pinch (j : Fin (n + 2)) (i : Fin (n + 1)) (k) :
     punchIn (punchIn j i) (punchIn (pinch i j) k) = punchIn j (punchIn i k) := by grind
 
